@@ -1,0 +1,124 @@
+# Phase 0 소스 레지스트리 — 기획서 §3 참조
+# method: api | rss | html | browser | mail | manual
+# policy: allowed | gray | blocked  (등록 시 robots.txt·약관 확인 후 기록, 미확인은 gray)
+# schedule: cron (KST)
+
+sources:
+  - id: card.shinhan.events
+    name: 신한카드 이벤트
+    domain: [dining, kids, card]
+    method: browser
+    extract: llm
+    policy: gray
+    schedule: "0 */2 * * *"
+    url: ""            # 등록 시 채움
+    priority: 3
+
+  - id: card.samsung.events
+    name: 삼성카드 이벤트
+    domain: [dining, kids, card]
+    method: browser
+    extract: llm
+    policy: gray
+    schedule: "0 */2 * * *"
+    url: ""
+    priority: 3
+
+  - id: card.hyundai.events
+    name: 현대카드 이벤트
+    domain: [dining, kids, card]
+    method: browser
+    extract: llm
+    policy: gray
+    schedule: "0 */2 * * *"
+    url: ""
+    priority: 3
+
+  - id: telecom.skt.membership
+    name: T멤버십 제휴 혜택
+    domain: [dining, kids, travel]
+    method: browser
+    extract: rules
+    policy: gray
+    schedule: "0 6 * * *"
+    url: ""
+    priority: 3
+
+  - id: telecom.kt.membership
+    name: KT멤버십 제휴 혜택
+    domain: [dining, kids, travel]
+    method: browser
+    extract: rules
+    policy: gray
+    schedule: "0 6 * * *"
+    url: ""
+    priority: 3
+
+  - id: local.currency.seoul
+    name: 서울사랑상품권 할인 판매 공지
+    domain: [dining]
+    method: html
+    extract: llm
+    policy: gray
+    schedule: "0 8 * * *"
+    url: ""
+    priority: 3
+
+  - id: kids.playdiscovery
+    name: 놀이의발견 키즈카페 특가
+    domain: [kids]
+    method: browser
+    extract: llm
+    policy: gray
+    schedule: "0 */6 * * *"
+    url: ""
+    priority: 3
+
+  - id: kids.multichild.card
+    name: 다둥이행복카드 가맹점
+    domain: [kids, dining]
+    method: manual
+    extract: rules
+    policy: allowed
+    schedule: "0 9 1 * *"
+    url: ""
+    priority: 3
+
+  - id: travel.lcc.promo
+    name: LCC 항공 프로모션 (뉴스레터)
+    domain: [travel]
+    method: mail
+    extract: llm
+    policy: allowed
+    schedule: "*/30 * * * *"
+    priority: 3
+
+  - id: travel.gov.stay
+    name: 정부·지자체 숙박 지원 공고
+    domain: [travel]
+    method: html
+    extract: llm          # PDF 공고 포함
+    policy: gray
+    schedule: "0 9 * * *"
+    url: ""
+    priority: 3
+
+  - id: community.ppomppu.hotdeal
+    name: 뽐뿌 핫딜 RSS
+    domain: [dining, kids, travel, etc]
+    method: rss
+    extract: llm
+    policy: gray
+    schedule: "*/30 * * * *"
+    url: ""
+    priority: 2
+
+  - id: community.algumon
+    name: 알구몬 핫딜
+    domain: [dining, kids, travel, etc]
+    method: rss
+    extract: llm
+    policy: gray
+    schedule: "*/30 * * * *"
+    url: ""
+    priority: 2
