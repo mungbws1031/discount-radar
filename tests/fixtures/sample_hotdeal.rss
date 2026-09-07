@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>샘플 핫딜 RSS (테스트 픽스처)</title>
+    <link>https://example.com/hotdeal</link>
+    <item>
+      <title>스타벅스 아메리카노 20% 할인 쿠폰</title>
+      <link>https://example.com/hotdeal/1</link>
+      <pubDate>Fri, 05 Sep 2026 09:00:00 +0900</pubDate>
+    </item>
+    <item>
+      <title>교촌치킨 5000원 할인</title>
+      <link>https://example.com/hotdeal/2</link>
+      <pubDate>Fri, 05 Sep 2026 10:00:00 +0900</pubDate>
+    </item>
+    <item>
+      <title>키즈카페 1+1 이벤트</title>
+      <link>https://example.com/hotdeal/3</link>
+      <pubDate>Fri, 05 Sep 2026 11:00:00 +0900</pubDate>
+    </item>
+  </channel>
+</rss>
