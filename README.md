@@ -56,8 +56,9 @@ python cli.py health               # 소스별 헬스 상태 + 커버리지 KPI
 |---|---|
 | `src/models.py` | 공통 Deal 스키마 (기획서 §5.2) |
 | `src/registry.py` | `sources/registry.yaml` 로더, `policy=blocked` 소스 자동 제외 |
-| `src/adapters/` | `rss`(동작함) · `html`(원문 저장까지만) · `browser`/`mail`(Phase 1 스텁, Playwright·IMAP 미설치) |
-| `src/pipeline.py` | fetch → extract → validate → upsert 오케스트레이션, 실패 소스 격리 |
+| `src/adapters/` | `rss`(정규식 규칙 추출, 동작함) · `html`(Claude API LLM Extractor 연결, 동작함) · `browser`/`mail`(Phase 1 스텁, Playwright·IMAP 미설치) |
+| `src/llm_extractor.py` | `html` 어댑터가 쓰는 Claude API 기반 추출기 — HTML→텍스트 정리, 구조화 출력(JSON Schema)으로 Deal 후보 추출 |
+| `src/pipeline.py` | fetch → extract → validate → upsert 오케스트레이션, fetch/extract 실패 모두 소스 단위로 격리 |
 | `src/storage.py` | SQLite 기반 Deal DB, 제목·도메인·마감일 기준 중복 병합, 만료 처리 |
 | `src/scheduler.py` | registry.yaml에서 쓰는 cron 패턴(`*/N`, 고정 시각)만 지원하는 최소 due-check |
 | `src/briefing.py` | 주말 브리핑 텍스트 생성 (매칭 엔진 이전 단계 — 조건 필터링 없음) |
@@ -70,9 +71,20 @@ python cli.py health               # 소스별 헬스 상태 + 커버리지 KPI
 수 없었습니다. **로컬/개인 서버 환경에서 각 소스의 실제 RSS·페이지
 URL을 확인해 채운 뒤** `python cli.py collect`로 실행하세요.
 
-- `method: rss` 소스만 즉시 동작합니다 (표준 RSS 2.0 `<item>` 파싱 + 정규식 기반 할인율/금액 추출).
-- `method: html` 소스는 원문만 저장하고 Deal은 만들지 않습니다 — LLM Extractor(Claude API)를 붙이는 것이 다음 작업입니다.
+- `method: rss` 소스는 정규식 기반 규칙 추출로 즉시 동작합니다.
+- `method: html` 소스는 Claude API(LLM Extractor)로 동작합니다 — `ANTHROPIC_API_KEY` 환경변수(또는 `ant auth login` 프로필)가 필요합니다. 신뢰도 0.7 미만인 딜은 항상 `needs_review`로 남습니다(기획서 §5.3).
 - `method: browser`/`mail` 소스는 각각 Playwright/IMAP 연동이 필요한 Phase 1 스텁입니다 (`fetch()` 호출 시 명시적으로 예외 발생).
+
+### LLM Extractor (html 어댑터)
+
+`src/llm_extractor.py`가 담당합니다.
+
+1. `html_to_text()`로 `<script>`/`<style>`을 제외한 가시 텍스트만 추출하고 12,000자로 자릅니다(토큰 비용 제한).
+2. Claude(`claude-opus-5`, effort `medium` — 분류·추출 워크로드라 기본값을 낮게 잡았습니다)에게 `output_config.format: json_schema`로 구조화된 Deal 배열을 요청합니다.
+3. 응답의 `confidence`가 0.7 이상이면 `status=active`, 미만이면 `status=needs_review`로 저장합니다.
+4. `stop_reason == "refusal"`, 인증 실패, 레이트리밋 등은 모두 `LlmExtractionError`로 통일되고, `pipeline.run_source`가 소스 단위로 격리해 다른 소스 수집에 영향을 주지 않습니다.
+
+모델·effort는 환경변수로 바꿀 수 있습니다: `DISCOUNT_RADAR_LLM_MODEL`, `DISCOUNT_RADAR_LLM_EFFORT`.
 
 ### 테스트
 
@@ -80,12 +92,14 @@ URL을 확인해 채운 뒤** `python cli.py collect`로 실행하세요.
 python -m unittest discover -s tests
 ```
 
-네트워크 호출 없이 로컬 픽스처(`tests/fixtures/sample_hotdeal.rss`)로
-추출·검증·중복 제거·만료·스케줄 로직을 검증합니다 (11개 테스트).
+네트워크 호출 없이 로컬 픽스처와 가짜(mock) `anthropic` 모듈로 추출·검증·
+중복 제거·만료·스케줄·LLM 분기 로직을 검증합니다 (17개 테스트). 실제
+Claude API·RSS/HTML 사이트에 붙는 통합 테스트는 이 샌드박스에서 실행할
+수 없습니다(§소스 URL 채우기 참고) — 로컬 환경에서 `ANTHROPIC_API_KEY`를
+설정하고 `python cli.py collect --source <html 소스 id>`로 직접 확인하세요.
 
 ### 다음 작업 (Phase 0 잔여)
 
 1. `sources/registry.yaml`의 ★★★ 소스 URL 확인·기입 (RSS부터)
-2. `html` 어댑터에 Claude API 기반 LLM Extractor 연결 (기획서 §5.3)
-3. 텔레그램/카카오 발송 연동 — `briefing.build_briefing()` 출력을 전송
-4. 매칭 엔진(F-06) 붙이기 전까지는 브리핑이 "내 조건" 필터링 없이 전체 노출됨에 유의
+2. 텔레그램/카카오 발송 연동 — `briefing.build_briefing()` 출력을 전송
+3. 매칭 엔진(F-06) 붙이기 전까지는 브리핑이 "내 조건" 필터링 없이 전체 노출됨에 유의

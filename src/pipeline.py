@@ -39,8 +39,13 @@ def run_source(source: Source, store: DealStore) -> AdapterHealth:
         return health
 
     total_deals = 0
+    extract_errors: list[str] = []
     for doc in docs:
-        candidates = adapter.extract(doc)
+        try:
+            candidates = adapter.extract(doc)
+        except Exception as exc:  # noqa: BLE001 — LLM/파서 오류 하나가 전체 소스를 죽이지 않게 격리
+            extract_errors.append(str(exc))
+            continue
         for deal in candidates:
             if not validate(deal):
                 continue
@@ -48,6 +53,9 @@ def run_source(source: Source, store: DealStore) -> AdapterHealth:
             total_deals += 1
 
     health = adapter.healthcheck(total_deals)
+    if extract_errors:
+        health.ok = False
+        health.message = f"{health.message} | extract 실패 {len(extract_errors)}건: {extract_errors[0]}"
     store.record_health(source.id, run_at, total_deals, health.ok, health.message)
     return health
 
